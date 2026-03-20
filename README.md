@@ -1,251 +1,352 @@
-# Registration Form to Registry Database
+# Registration to Registry Script
 
-This script automatically copies participant details from the downloaded **registration form Excel file** into the correct region sheet in the **registry database Excel file**.
+This guide explains how to use the script even if you do not know programming.
 
-It is currently configured for:
+The package should contain these files:
+
+- `registration_to_registry.py`
+- `requirements.txt`
+- `run_windows.bat`
+- `run_unix.sh`
+- the two Excel files you download each time
+
+---
+
+## What this script does
+
+The script reads the downloaded **Registration Form (Responses)** Excel file, filters people from the selected region, and writes them into the matching sheet in the **Registry Database** Excel file.
+
+It appends new people below the existing rows.
+
+It is currently set to use a specific region inside the Python file. If you want to use another region, you must change these two lines near the top of the Python file:
 
 ```python
 REGION_NAME = "South West"
 REGISTRY_SHEET_NAME = "South West"
 ```
 
-You can change these two lines to use the script for another region.
-
----
-
-## 1. Install Python
-
-Make sure Python is installed on your laptop.
-
-To check, open **Command Prompt** or **Terminal** and run:
-
-```bash
-python --version
-```
-
-If Python is not installed, install it first.
-
----
-
-## 2. Install required library
-
-This script uses **openpyxl**.
-
-Run:
-
-```bash
-python -m pip install openpyxl
-```
-
-To check whether it installed correctly:
-
-```bash
-python -c "import openpyxl; print(openpyxl.__version__)"
-```
-
----
-
-## 3. Prepare the files
-
-Download these 2 Excel files:
-
-1. **Registry Database**
-2. **Registration Form (Responses)**
-
-Then place both Excel files in the **same folder** as the Python script.
-
-Example folder:
-
-```text
-registration-folder/
-├── registration_to_registry.py
-├── Registry Database.xlsx
-└── Lan Berambeh Anak Sarawak 2026 UK Edition_ Registration Form (Responses).xlsx
-```
-
-The script automatically searches for:
-- the **registry file** using words like `registry` and `database`
-- the **form file** using words like `registration` and `responses`
-
-So do not remove those keywords from the filenames.
-
----
-
-## 4. Change the region if needed
-
-Open `registration_to_registry.py` and look for:
-
-```python
-REGION_NAME = "South West"
-REGISTRY_SHEET_NAME = "South West"
-```
-
-### Meaning
-- `REGION_NAME` = the region name as written in the **registration form**
-- `REGISTRY_SHEET_NAME` = the sheet name inside the **registry database**
-
-### Example
-If you want to use it for London, change it to:
+Example for London:
 
 ```python
 REGION_NAME = "London"
 REGISTRY_SHEET_NAME = "London"
 ```
 
-If the region name in the form and the registry sheet name are different, set them accordingly.
+---
+
+## Before you start
+
+You need:
+
+1. **Python installed** on your computer
+2. This script package in one folder
+3. The downloaded Excel files placed in the same folder
+
+---
+
+## Step 1: Check whether Python is installed
+
+### On Windows
+
+1. Press **Win + R**
+2. Type `cmd`
+3. Press **Enter**
+4. In the black window, type:
+
+```bash
+python --version
+```
+
+If you see something like `Python 3.12.x` or `Python 3.13.x`, Python is installed.
+
+If you get an error, install Python first from the official Python website, then try again.
+
+### On macOS / Linux
+
+Open Terminal and run:
+
+```bash
+python3 --version
+```
+
+If needed, your system may use `python` instead of `python3`.
+
+---
+
+## Step 2: Put everything in one folder
+
+Create one folder and place all files inside it.
 
 Example:
+
+```text
+registration-folder/
+├── registration_to_registry.py
+├── requirements.txt
+├── run_windows.bat
+├── run_unix.sh
+├── Registry Database.xlsx
+└── Lan Berambeh Anak Sarawak 2026 UK Edition_ Registration Form (Responses).xlsx
+```
+
+Important:
+- Keep the Python file and both Excel files in the **same folder**
+- The Excel filenames should still contain words like `Registry`, `Database`, `Registration`, or `Responses`
+
+---
+
+## Step 3: Change the region if needed
+
+If you are not using South West, open `registration_to_registry.py` in Notepad, VS Code, or any text editor.
+
+Find these lines near the top:
 
 ```python
 REGION_NAME = "South West"
-REGISTRY_SHEET_NAME = "SW"
+REGISTRY_SHEET_NAME = "South West"
 ```
+
+Change both values to your own region.
+
+Save the file.
 
 ---
 
-## 5. Open terminal in the folder
+## Step 4: Create and use a virtual environment manually
 
-Go to the folder where the Python file and the 2 Excel files are stored.
+A virtual environment keeps the required Python library inside this folder so it does not affect the rest of the computer.
 
-### Option 1: Use File Explorer
-Open the folder, click the address bar, type `cmd`, then press **Enter**.
+### On Windows
 
-### Option 2: Use terminal manually
-Open Command Prompt and type:
+1. Open Command Prompt in the folder
+   - Open the folder in File Explorer
+   - Click the address bar
+   - Type `cmd`
+   - Press **Enter**
 
-```bash
-cd "C:\path\to\your\folder"
-```
-
-Example:
+2. Create the virtual environment:
 
 ```bash
-cd "C:\Users\User\Desktop\lbas south west"
+python -m venv .venv
 ```
 
----
+3. Activate it:
 
-## 6. Run the script
+```bash
+.venv\Scripts\activate
+```
 
-Run:
+After activation, you may see `(.venv)` at the start of the command line.
+
+4. Install the required library:
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+5. Run the script:
 
 ```bash
 python registration_to_registry.py
 ```
 
+6. When finished, you can leave the virtual environment by typing:
+
+```bash
+deactivate
+```
+
+### On macOS / Linux
+
+1. Open Terminal in the folder
+2. Create the virtual environment:
+
+```bash
+python3 -m venv .venv
+```
+
+3. Activate it:
+
+```bash
+source .venv/bin/activate
+```
+
+4. Install the required library:
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+5. Run the script:
+
+```bash
+python registration_to_registry.py
+```
+
+6. When finished:
+
+```bash
+deactivate
+```
+
 ---
 
-## 7. What the script does
+## Easier method: use the launcher scripts
 
-The script will:
+You do not need to activate the virtual environment manually if you use the launcher files below.
 
-1. open the registration form Excel file
-2. search through all responses
-3. filter only people from the selected region
-4. open the selected region sheet in the registry database
-5. append new people below the existing rows
-6. save the updated registry workbook
+They will:
 
-This means:
-- existing rows in the registry stay at the top
-- newly added people are written below them
+1. create the virtual environment if it does not already exist
+2. install the required library
+3. run the Python script
+
+### Windows
+
+Double-click:
+
+- `run_windows.bat`
+
+or open Command Prompt in the folder and run:
+
+```bash
+run_windows.bat
+```
+
+### macOS / Linux
+
+Open Terminal in the folder and run:
+
+```bash
+chmod +x run_unix.sh
+./run_unix.sh
+```
 
 ---
 
-## 8. Important note about duplicates
+## What the script fills
 
-The current script avoids duplicates by checking whether the following already exist in the registry sheet:
+The updated script now writes:
 
+- **Actual ID** = the row number from the response form
 - **Name**
 - **Email**
-- **Actual ID**
+- **Contact Number (Whatsapp)**
+- **Status**
+- **Number of dependents**
+- **City**
+- **Which part of Sarawak**
+- **University**
 
-If **any one** of these matches, that row will be skipped.
+It does **not** fill:
 
-### Example
-If two different people have:
-- the same full name
-- but different email and Actual ID
+- `Confirmation email sent?`
 
-the second person may still be skipped because the script treats same name as duplicate.
-
-So after running the script, it is a good idea to do a quick manual check for people with exactly the same name.
+That column is left for the secretary to use.
 
 ---
 
-## 9. After running the script
+## How duplicates are handled
 
-The script will show a summary like this:
+The updated script skips duplicates using:
+
+- **Actual ID**
+- **Email**
+
+This is safer than checking name.
+
+So if two different people have the same name but different email and Actual ID, both can still be added.
+
+---
+
+## What happens after running
+
+The script saves the updated downloaded registry workbook in the same folder.
+
+After that:
+
+1. Open the updated registry Excel file
+2. Check the correct region sheet
+3. Copy the new data if needed
+4. Paste it into the shared Excel file
+
+---
+
+## Expected terminal output
+
+You may see something like:
 
 ```text
 Registry file   : Registry Database.xlsx
 Form file       : Lan Berambeh Anak Sarawak 2026 UK Edition_ Registration Form (Responses).xlsx
 Region checked  : South West
-Rows found      : 10
+Rows found      : 12
 Rows added      : 3
-Skipped existing: 7
+Skipped existing: 9
 Done.
 ```
 
-### Meaning
+Meaning:
+
 - `Rows found` = total people from that region in the form
-- `Rows added` = new people written into the registry
-- `Skipped existing` = people not added because they were treated as duplicates
+- `Rows added` = new rows written into the registry
+- `Skipped existing` = rows skipped because they already exist
 
 ---
 
-## 10. Final step
+## Troubleshooting
 
-After the script updates the downloaded registry Excel file:
+### 1. `python` is not recognized
 
-1. open the updated file
-2. copy the newly updated region sheet data if needed
-3. paste it into the **shared Excel file**
+Python is not installed, or not added to PATH.
 
-Make sure you paste into the correct region sheet in the shared registry workbook.
+Install Python first.
 
----
+### 2. `No module named openpyxl`
 
-## 11. Notes
-
-- Run the script again whenever new form responses come in.
-- Old registry entries will stay on top.
-- New entries will be added below.
-- The script saves changes directly into the downloaded registry workbook in the same folder.
-
----
-
-## 12. Troubleshooting
-
-### Error: `ModuleNotFoundError: No module named 'openpyxl'`
-Install the library:
+Run:
 
 ```bash
-python -m pip install openpyxl
+python -m pip install -r requirements.txt
 ```
 
-### Script cannot find the Excel files
-Make sure:
-- both Excel files are in the same folder as the script
-- the filenames still contain keywords like:
-  - `registry`
-  - `database`
-  - `registration`
-  - `responses`
+### 3. It cannot find the Excel files
 
-### Sheet not found
-Make sure `REGISTRY_SHEET_NAME` exactly matches the worksheet name in the registry workbook.
+Make sure both Excel files are in the same folder as the Python script.
+
+### 4. It says the sheet does not exist
+
+Check the worksheet name inside the registry workbook and make sure:
+
+```python
+REGISTRY_SHEET_NAME = "Your Region"
+```
+
+matches exactly.
+
+### 5. Nothing new was added
+
+Possible reasons:
+
+- there are no people from that region in the form
+- those people were already copied before
+- the selected region name does not exactly match the form value
 
 ---
 
-## 13. Summary
+## Quick summary
 
-### To use:
-1. install Python
-2. install `openpyxl`
-3. download the 2 Excel files
-4. place them in the same folder as the script
-5. change the region name if needed
-6. open terminal in that folder
-7. run the script
-8. copy the updated data into the shared Excel file
+### First time setup
+
+1. Install Python
+2. Put all files in one folder
+3. Change the region in the Python file if needed
+4. Run `run_windows.bat` on Windows, or `./run_unix.sh` on macOS/Linux
+
+### Every later use
+
+1. Download the latest 2 Excel files
+2. Replace the old Excel files in the folder
+3. Run the launcher again
+4. Copy the updated registry data into the shared Excel file
+

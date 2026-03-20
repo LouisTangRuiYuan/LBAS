@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import sys
@@ -17,25 +16,26 @@ FORM_KEYWORDS = ["registration", "responses"]
 
 # --- Mapping assumptions ---
 # Registry columns:
-# A ID (already prefilled in template, e.g. SW001)
-# B Actual ID                <- SSA-UK Membership ID
-# C NAME                     <- Full Name
-# D Email                    <- E-mail (fallback Email Address)
-# E Contact Number           <- WhatsApp-reachable number
-# F Status                   <- "Student" or "Working / Graduate"
-# G Number of dependents     <- numeric count
-# H City                     <- City of Residence / "Others" text
-# I University               <- University / Institution
-# J Confirmation email sent? <- left blank
+# A ID                          <- preserved/generated using region prefix + row number
+# B Actual ID                   <- actual response row number from the form sheet
+# C NAME                        <- Full Name
+# D Email                       <- E-mail (fallback Email Address)
+# E Contact Number (Whatsapp)   <- WhatsApp-reachable number
+# F Status                      <- "Student" or "Working / Graduate"
+# G Number of dependents        <- numeric count
+# H City                        <- City of Residence / "Others" text
+# I Which part of Sarawak       <- Which Part of Sarawak are you from?
+# J University (if applicable)  <- University / Institution
+# K Confirmation email sent?    <- left unchanged / blank for secretary use
 
 FORM_HEADERS_REQUIRED = {
     "Full Name": "full_name",
-    "SSA-UK Membership ID": "membership_id",
     "E-mail": "email",
     "Email Address": "email_address",
     "UK/EU Phone Number ": "uk_phone",
     "Malaysia Phone Number (if available) ": "my_phone",
     "Which Phone Number will be reachable through WhatsApp? ": "whatsapp_pref",
+    "Which Part of Sarawak are you from? ": "sarawak_part",
     "Which region are you from?": "region",
     "City of Residence in UK and Ireland": "city",
     "If you answered 'Others' above, please specify which city": "other_city",
@@ -43,6 +43,26 @@ FORM_HEADERS_REQUIRED = {
     "Employment Status": "employment_status",
     "University / Institution ": "university",
     "How many dependents are you planning to bring to the event?": "dependents_count",
+}
+
+
+REGION_PREFIX_MAP = {
+    "London": "LON",
+    "East of England": "EOE",
+    "North West": "NW",
+    "Yorkshire": "YKS",
+    "North East": "NE",
+    "Scotland": "SCO",
+    "Northern Ireland": "NI",
+    "Republic of Ireland": "ROI",
+    "East Midlands": "EM",
+    "West Midlands": "WM",
+    "Wales": "WAL",
+    "South West": "SW",
+    "South East": "SE",
+    "France": "FRA",
+    "Germany": "GER",
+    "Rest of EU": "REU",
 }
 
 
@@ -81,10 +101,6 @@ def normalize_email(value) -> str:
     return normalize_text(value).lower()
 
 
-def normalize_name(value) -> str:
-    return " ".join(normalize_text(value).upper().split())
-
-
 def parse_whatsapp_number(row: Dict[str, object]) -> str:
     pref = normalize_text(row.get("whatsapp_pref"))
     uk_phone = normalize_text(row.get("uk_phone"))
@@ -105,7 +121,6 @@ def parse_status(row: Dict[str, object]) -> str:
     if "student" in current_status:
         return "Student"
 
-    # Any non-student case is grouped into the registry's broader bucket
     if employment_status or current_status:
         return "Working / Graduate"
 
@@ -130,7 +145,7 @@ def parse_dependents_count(value) -> int:
         return 0
 
 
-def row_is_empty(ws, row_idx: int, start_col: int = 2, end_col: int = 10) -> bool:
+def row_is_empty(ws, row_idx: int, start_col: int = 2, end_col: int = 11) -> bool:
     for col in range(start_col, end_col + 1):
         if ws.cell(row_idx, col).value not in (None, ""):
             return False
@@ -151,56 +166,50 @@ def build_form_row(ws, row_idx: int, header_map: Dict[str, int]) -> Dict[str, ob
     for excel_header, key in FORM_HEADERS_REQUIRED.items():
         col_idx = header_map.get(excel_header)
         row[key] = ws.cell(row_idx, col_idx).value if col_idx else None
+    row["response_row_id"] = row_idx
     return row
 
 
 def existing_keys_in_registry(ws) -> set:
     keys = set()
     for row_idx in range(2, ws.max_row + 1):
-        name = normalize_name(ws.cell(row_idx, 3).value)
         email = normalize_email(ws.cell(row_idx, 4).value)
         actual_id = normalize_text(ws.cell(row_idx, 2).value)
 
-        if email:
-            keys.add(("email", email))
-        if name:
-            keys.add(("name", name))
         if actual_id:
             keys.add(("actual_id", actual_id))
+        if email:
+            keys.add(("email", email))
     return keys
 
 
 def choose_duplicate_keys(record: Dict[str, object]) -> List[Tuple[str, str]]:
     keys = []
-    email = normalize_email(record["email"])
-    name = normalize_name(record["name"])
     actual_id = normalize_text(record["actual_id"])
+    email = normalize_email(record["email"])
 
-    if email:
-        keys.append(("email", email))
     if actual_id:
         keys.append(("actual_id", actual_id))
-    if name:
-        keys.append(("name", name))
+    if email:
+        keys.append(("email", email))
     return keys
 
 
 def next_available_row(ws) -> int:
     for row_idx in range(2, ws.max_row + 1):
-        if row_is_empty(ws, row_idx, 2, 10):
+        if row_is_empty(ws, row_idx, 2, 11):
             return row_idx
     return ws.max_row + 1
 
 
 def copy_style_from_previous_row(ws, row_idx: int) -> None:
-    # Optional formatting preservation if a new row needs to be added past the template area
     if row_idx <= 2:
         return
 
     from copy import copy
 
     prev_row = row_idx - 1
-    for col in range(1, 11):
+    for col in range(1, 12):
         src = ws.cell(prev_row, col)
         dst = ws.cell(row_idx, col)
         if src.has_style:
@@ -219,16 +228,26 @@ def copy_style_from_previous_row(ws, row_idx: int) -> None:
             dst.protection = copy(src.protection)
 
 
+def get_region_prefix(region_sheet_name: str) -> str:
+    return REGION_PREFIX_MAP.get(region_sheet_name, "REG")
+
+
+def make_registry_id(region_sheet_name: str, target_row: int) -> str:
+    prefix = get_region_prefix(region_sheet_name)
+    return f"{prefix}{target_row - 1:03d}"
+
+
 def make_record(form_row: Dict[str, object]) -> Dict[str, object]:
     email = normalize_text(form_row.get("email")) or normalize_text(form_row.get("email_address"))
     return {
-        "actual_id": normalize_text(form_row.get("membership_id")),
+        "actual_id": normalize_text(form_row.get("response_row_id")),
         "name": normalize_text(form_row.get("full_name")),
         "email": email,
         "contact": parse_whatsapp_number(form_row),
         "status": parse_status(form_row),
         "dependents": parse_dependents_count(form_row.get("dependents_count")),
         "city": parse_city(form_row),
+        "sarawak_part": normalize_text(form_row.get("sarawak_part")),
         "university": normalize_text(form_row.get("university")),
     }
 
@@ -275,7 +294,7 @@ def main() -> int:
 
     added_count = 0
     skipped_duplicates = 0
-    south_west_found = 0
+    region_found = 0
 
     for row_idx in range(2, form_ws.max_row + 1):
         form_row = build_form_row(form_ws, row_idx, header_map)
@@ -284,7 +303,7 @@ def main() -> int:
         if region != REGION_NAME:
             continue
 
-        south_west_found += 1
+        region_found += 1
         record = make_record(form_row)
 
         duplicate = False
@@ -301,21 +320,28 @@ def main() -> int:
         if target_row > registry_ws.max_row:
             copy_style_from_previous_row(registry_ws, target_row)
 
-        # If column A has no ID formula/value for this row, continue the numbering pattern.
         if registry_ws.cell(target_row, 1).value in (None, ""):
-            registry_ws.cell(target_row, 1).value = f"SW{target_row - 1:03d}"
+            registry_ws.cell(target_row, 1).value = make_registry_id(REGISTRY_SHEET_NAME, target_row)
 
-        registry_ws.cell(target_row, 2).value = record["actual_id"] or None
+        # Write Actual ID and contact as text-safe values
+        actual_id_cell = registry_ws.cell(target_row, 2)
+        actual_id_cell.number_format = "@"
+        actual_id_cell.value = record["actual_id"] or None
+
         registry_ws.cell(target_row, 3).value = record["name"] or None
         registry_ws.cell(target_row, 4).value = record["email"] or None
-        registry_ws.cell(target_row, 5).value = record["contact"] or None
+
+        contact_cell = registry_ws.cell(target_row, 5)
+        contact_cell.number_format = "@"
+        contact_cell.value = record["contact"] or None
+
         registry_ws.cell(target_row, 6).value = record["status"] or None
         registry_ws.cell(target_row, 7).value = record["dependents"]
         registry_ws.cell(target_row, 8).value = record["city"] or None
-        registry_ws.cell(target_row, 9).value = record["university"] or None
-        # Column J intentionally left blank
+        registry_ws.cell(target_row, 9).value = record["sarawak_part"] or None
+        registry_ws.cell(target_row, 10).value = record["university"] or None
+        # Column K intentionally left unchanged / blank
 
-        # Update duplicate keys so reruns within same session don't duplicate
         for key in choose_duplicate_keys(record):
             registry_keys.add(key)
 
@@ -326,7 +352,7 @@ def main() -> int:
     print(f"Registry file   : {registry_path.name}")
     print(f"Form file       : {form_path.name}")
     print(f"Region checked  : {REGION_NAME}")
-    print(f"Rows found      : {south_west_found}")
+    print(f"Rows found      : {region_found}")
     print(f"Rows added      : {added_count}")
     print(f"Skipped existing: {skipped_duplicates}")
     print("Done.")
